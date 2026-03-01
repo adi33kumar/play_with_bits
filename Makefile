@@ -9,7 +9,9 @@ ARMGNU ?= aarch64-linux-gnu
 
 # Compiler flags for C files: define RPI_VERSION, warnings, no stdlib, freestanding, include path, general regs only
 COPS = -DRPI_VERSION=$(RPI_VERSION) -Wall -nostdlib -nostartfiles -ffreestanding \
-	   -Iinclude -mgeneral-regs-only
+	   -Iinclude -mgeneral-regs-only -DGUEST=1 \
+	   -Iinclude -Ifreertos/include -Ifreertos/src -Ifreertos/portable/GCC/ARM_AARCH64 \
+	  	-Ifreertos/portable/MemMang
 
 # Assembler flags: include path
 ASMOPS = -Iinclude
@@ -55,12 +57,48 @@ DEP_FILES = $(OBJ_FILES:%.o=%.d)
 # Include dependency files
 -include $(DEP_FILES)
 
+FREERTOS_C_FILES = $(wildcard freertos/src/*.c)
+FREERTOS_PORT_C_FILES = $(wildcard freertos/portable/GCC/ARM_AARCH64/*.c)
+FREERTOS_PORT_ASM_FILES = $(wildcard freertos/portable/GCC/ARM_AARCH64/*.S)
+FREERTOS_MEMMANG_C_FILES = $(wildcard freertos/portable/MemMang/*.c)
+FREERTOS_HEADER_FILES = $(wildcard freertos/include/*.h) $(wildcard freertos/portable/GCC/ARM_AARCH64/*.h)
+
+# FreeRTOS Object files
+FREERTOS_OBJ_FILES = $(FREERTOS_C_FILES:freertos/src/%.c=freertos/build/%_c.o) \
+					 $(FREERTOS_PORT_C_FILES:freertos/portable/GCC/ARM_AARCH64/%.c=freertos/build/%_c.o) \
+					 $(FREERTOS_PORT_ASM_FILES:freertos/portable/GCC/ARM_AARCH64/%.S=freertos/build/%_s.o) \
+					 $(FREERTOS_MEMMANG_C_FILES:freertos/portable/MemMang/%.c=freertos/build/%_c.o)
+
+FREERTOS_LIB = freertos/build/libfreertos.a
+
+freertos/build/%_c.o: freertos/src/%.c $(FREERTOS_HEADER_FILES)
+	mkdir -p $(@D)
+	$(ARMGNU)-gcc $(COPS) -MMD -c $< -o $@
+
+freertos/build/%_c.o: freertos/portable/GCC/ARM_AARCH64/%.c $(FREERTOS_HEADER_FILES)
+	mkdir -p $(@D)
+	$(ARMGNU)-gcc $(COPS) -MMD -c $< -o $@
+
+freertos/build/%_c.o: freertos/portable/MemMang/%.c $(FREERTOS_HEADER_FILES)
+	mkdir -p $(@D)
+	$(ARMGNU)-gcc $(COPS) -MMD -c $< -o $@
+
+freertos/build/%_s.o: freertos/portable/GCC/ARM_AARCH64/%.S $(FREERTOS_HEADER_FILES)
+	mkdir -p $(@D)
+	$(ARMGNU)-gcc $(COPS) -MMD -c $< -o $@
+
+
+$(FREERTOS_LIB): $(FREERTOS_OBJ_FILES)
+	@echo "Building FreeRTOS library"
+	mkdir -p $(@D)
+	$(ARMGNU)-ar rcs $@ $(FREERTOS_OBJ_FILES)
+
 # Rule to build kernel8.img from linker script and object files
-kernel8.img: $(SRC_DIR)/linker.ld $(OBJ_FILES)
+kernel8.img: $(SRC_DIR)/linker.ld $(OBJ_FILES) $(FREERTOS_LIB)
 	@echo "Building for RPI $(value RPI_VERSION)"
 	@echo "Deploy to $(value BOOTMNT)"
 	@echo ""
-	$(ARMGNU)-ld -T $(SRC_DIR)/linker.ld -o $(BUILD_DIR)/kernel8.elf $(OBJ_FILES)
+	$(ARMGNU)-ld -T $(SRC_DIR)/linker.ld -o $(BUILD_DIR)/kernel8.elf $(OBJ_FILES) $(FREERTOS_LIB)
 	$(ARMGNU)-objcopy $(BUILD_DIR)/kernel8.elf -O binary kernel8.img
 	$(ARMGNU)-objdump -d $(BUILD_DIR)/kernel8.elf > kernel8.list
 	$(ARMGNU)-nm -n $(BUILD_DIR)/kernel8.elf > kernel8.nm

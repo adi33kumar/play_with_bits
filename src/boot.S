@@ -7,6 +7,12 @@
 .globl _start
 _start:
     // lower 8 bit shows affinity 0 bits
+    .set freertos_vector_base, _freertos_vector_table
+    ldr x1, =freertos_vector_base
+    msr vbar_el2, x1
+    msr vbar_el1, x1
+    DSB sy
+    ISB sy
     mrs x0, mpidr_el1;
     and x0, x0, #0xff;
     cbz x0, master
