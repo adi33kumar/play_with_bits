@@ -5,7 +5,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "FreeRTOS_tick_config.h"
+#include "semphr.h"
 
+
+SemaphoreHandle_t xSemaphore;
 void putc(void *p, char c) {
     if (c == '\n') {
         uart_send('\r');
@@ -15,14 +18,22 @@ void putc(void *p, char c) {
 }
 void Task1(void *pvParameters) {
     while (1) {
-        printf("Hello from Task 1!\n");
+        if (xSemaphoreTake( xSemaphore, portMAX_DELAY ) == pdTRUE) 
+        {
+            printf("Hello from Task 1!\n");
+            xSemaphoreGive( xSemaphore );
+        }
         vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay for 1000 ms
     }
 }
 
 void Task2(void *pvParameters) {
     while (1) {
-        printf("Hello from Task 2!\n");
+        if (xSemaphoreTake( xSemaphore, portMAX_DELAY ) == pdTRUE) 
+        {
+            printf("Hello from Task 2!\n");
+            xSemaphoreGive( xSemaphore );
+        }
         vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay for 1000 ms
     }
 }
@@ -50,7 +61,18 @@ void kernel_main()
     printf("This is a test of the printf function: %d, %s, %x\n", 42, "hello", 255);
     TaskHandle_t task1;
     TaskHandle_t task2;
-   
+    
+    xSemaphore = xSemaphoreCreateBinary();
+   if( xSemaphore == NULL )
+ {
+    printf("Failed to create semaphore\n");
+    while(1);
+ }
+ else
+ {
+    printf("Semaphore created successfully\n");
+ }
+    xSemaphoreGive( xSemaphore );
     BaseType_t ret = xTaskCreate( Task1, "Task1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &task1 );
     if(ret != pdPASS) {
         printf("Task creation failed\n");
