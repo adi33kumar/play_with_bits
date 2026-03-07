@@ -44,6 +44,7 @@ void kernel_main()
 {
     uart_init();
     init_printf(0, putc);
+    initialize_performance_monitors();
     uart_send('H');
     uart_send('e');
     uart_send('l');
@@ -58,7 +59,10 @@ void kernel_main()
     uart_send('d');
     uart_send('!');
     uart_send('\n');  
+    uint64_t start = read_pmccntr();
     printf("This is a test of the printf function: %d, %s, %x\n", 42, "hello", 255);
+    uint64_t end = read_pmccntr();
+    printf("Printf took %d cycles\n", (uint32_t)(end - start));
     TaskHandle_t task1;
     TaskHandle_t task2;
     

@@ -3,3 +3,5 @@
 void print_cntv_reg();
 void interrupt_stats();
 void vDefaultExpHandler(uint64_t type);
+void initialize_performance_monitors();
+uint64_t read_pmccntr(void);
