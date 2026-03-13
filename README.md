@@ -1,4 +1,4 @@
-# play_with_bits
+# rtos_from_scratch
 This repository maintains examples and codes explained in play with Bits YouTube channel for public sharing. 
 List of topics which will be covered on youtube with examples and demo.
 1. Embedded Interview Crackers
