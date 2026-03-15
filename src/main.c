@@ -39,6 +39,39 @@ void Task2(void *pvParameters) {
         vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay for 1000 ms
     }
 }
+// To demonstrate priority inversion.
+SemaphoreHandle_t priorityInversionSem;;
+
+void LowPriorityTask(void *pvParameters) {
+    while (1) {
+        if (xSemaphoreTake( priorityInversionSem, portMAX_DELAY ) == pdTRUE) 
+        {
+            printf("Hello from Low Priority Task!\n");
+            vTaskDelay(pdMS_TO_TICKS(1000)); // Simulate long processing time
+            xSemaphoreGive( priorityInversionSem );
+        }
+        
+    }
+}
+
+void MediumPriorityTask(void *pvParameters) {
+    vTaskDelay(pdMS_TO_TICKS(100)); // Ensure this task runs after Low Priority Task has taken the semaphore
+    while (1) {
+        printf("Hello from Medium Priority Task!\n");
+    }
+}
+
+void HighPriorityTask(void *pvParameters) {
+    while (1) {
+        if (xSemaphoreTake( priorityInversionSem, portMAX_DELAY ) == pdTRUE) 
+        {
+            printf("Hello from High Priority Task!\n");
+            xSemaphoreGive( priorityInversionSem );
+            vTaskDelay(pdMS_TO_TICKS(200)); // Simulate some processing time
+        }
+        
+    }
+}
 
 
 
@@ -46,62 +79,41 @@ void kernel_main()
 {
     uart_init();
     init_printf(0, putc);
-    initialize_performance_monitors();
-    uart_send('H');
-    uart_send('e');
-    uart_send('l');
-    uart_send('l');
-    uart_send('o');
-    uart_send(',');
-    uart_send(' ');
-    uart_send('W');
-    uart_send('o');
-    uart_send('r');
-    uart_send('l');
-    uart_send('d');
-    uart_send('!');
-    uart_send('\n');  
-    uint64_t start = read_pmccntr();
-    printf("This is a test of the printf function: %d, %s, %x\n", 42, "hello", 255);
-    uint64_t end = read_pmccntr();
-    printf("Printf took %d cycles\n", (uint32_t)(end - start));
-    irq_enable();
-    irq_init();
+    // initialize_performance_monitors();
+    // uart_send('H');
+    // uart_send('e');
+    // uart_send('l');
+    // uart_send('l');
+    // uart_send('o');
+    // uart_send(',');
+    // uart_send(' ');
+    // uart_send('W');
+    // uart_send('o');
+    // uart_send('r');
+    // uart_send('l');
+    // uart_send('d');
+    // uart_send('!');
+    // uart_send('\n');  
+    // uint64_t start = read_pmccntr();
+    // printf("This is a test of the printf function: %d, %s, %x\n", 42, "hello", 255);
+    // uint64_t end = read_pmccntr();
+    // printf("Printf took %d cycles\n", (uint32_t)(end - start));
+    // irq_enable();
+    // irq_init();
     // To initialize System Timer not ARM Timer.
-    timer_init();
-    TaskHandle_t task1;
-    TaskHandle_t task2;
-    
-    xSemaphore = xSemaphoreCreateBinary();
-   if( xSemaphore == NULL )
- {
-    printf("Failed to create semaphore\n");
-    while(1);
- }
- else
- {
-    printf("Semaphore created successfully\n");
- }
-    xSemaphoreGive( xSemaphore );
-    // BaseType_t ret = xTaskCreate( Task1, "Task1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &task1 );
-    // if(ret != pdPASS) {
-    //     printf("Task creation failed\n");
-    // }
-    // BaseType_t ret2 = xTaskCreate( Task2, "Task2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &task2 );
-    // if(ret2 != pdPASS) {
-    //     printf("Task2 creation failed\n");
-    // }
-    // else {
-    //     printf("Task2 created successfully\n");
-    // }
-    interrupt_stats();
-    print_cntv_reg();
-    // Kernel main function
-    // while (1)
-    // {
-    //     char c = uart_recv(); // Receive a character
-    //     uart_send(c);         // Echo the character back
-    // }
+    // timer_init();
+    TaskHandle_t task1;  // Highest Priority Task
+    TaskHandle_t task2;     // Medium Priority Task
+    TaskHandle_t task3;     // Low Priority Task
+    // Get the handle for binary Semaphore
+    // priorityInversionSem = xSemaphoreCreateBinary();
+    priorityInversionSem = xSemaphoreCreateMutex(); // Using a mutex to handle priority inversion
+    xSemaphoreGive(priorityInversionSem); // Initially give the semaphore so that Low Priority Task can take it first.
+    // Create task with different priorities
+    xTaskCreate( LowPriorityTask, "Low Priority Task", 1024, NULL, 1, &task1 ); // Low Priority Task
+    xTaskCreate( MediumPriorityTask, "Medium Priority Task", 1024, NULL, 2, &task2 ); // Medium Priority Task
+    xTaskCreate( HighPriorityTask, "High Priority Task", 1024, NULL, 3, &task3 ); // High Priority Task
+
     vTaskStartScheduler(); // Start the FreeRTOS scheduler
     printf("Scheduler started\n");
     while (1) {
