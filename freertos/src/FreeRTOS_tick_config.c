@@ -3,6 +3,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "FreeRTOS_tick_config.h"
+#include "timer.h"
+#include "irq.h"
 
 static uint32_t timer_cntfrq = 0;
 static uint32_t timer_tick = 0;
@@ -89,9 +91,10 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer,
 
 void interrupt_stats()
 {
+    uint32_t irq_cntl = *CORE_TIMER_IRQCNTL;
     printf("Interrupt stats\n");
-    printf("CORE0_TIMER_IRQCNTL: %08X\n", *CORE_TIMER_IRQCNTL);
-    printf("CORE0_IRQ_SOURCE: %08X\n", *CORE_IRQ_SOURCE);
+    printf("CORE0_TIMER_IRQCNTL: %d\n", irq_cntl);
+    printf("CORE0_IRQ_SOURCE: %d\n", *CORE_IRQ_SOURCE);
 }
 
 void print_cntv_reg()
@@ -133,6 +136,14 @@ void vApplicationIRQHandler( uint32_t ulCORE0_INT_SRC )
 {
 	uint32_t ulInterruptID;
 	ulInterruptID = ulCORE0_INT_SRC & 0x0007FFFFUL;
+    uint32_t irq_pending1 = REGS_IRQ->pending1;
+    // uint32_t irq_pending2 = REGS_IRQ->pending2;
+    // uint32_t pending_basic = REGS_IRQ->pending_basic;
+    // printf("AppsIRQHandler");
+    // printf("pending1=%08X\n", irq_pending1);
+    // printf("pending2=%08X\n", irq_pending2);
+    // printf("pending_basic=%08X\n", pending_basic);
+    // printf("Interrupt received: ID=%d, pending1=%08X\n", ulInterruptID, irq_pending1);
 	// if(gIrqCount < 2)
 	// {
 	// 	gIrqCount++;
@@ -150,6 +161,12 @@ void vApplicationIRQHandler( uint32_t ulCORE0_INT_SRC )
 		// gIrqCount++;
 		FreeRTOS_Tick_Handler();
 	}
+    if(irq_pending1 & (1 << 1))
+    {
+        /* Peripherals */
+        timer_handler();
+        printf("jhfhhdj=%08X\n", REGS_IRQ->pending1);
+    }
 	// if(ulInterruptID & (1 << 8))
 	// {
 	// 	/* Peripherals */

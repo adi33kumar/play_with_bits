@@ -6,6 +6,8 @@
 #include "task.h"
 #include "FreeRTOS_tick_config.h"
 #include "semphr.h"
+#include "timer.h"
+#include "irq.h"
 
 
 SemaphoreHandle_t xSemaphore;
@@ -63,6 +65,10 @@ void kernel_main()
     printf("This is a test of the printf function: %d, %s, %x\n", 42, "hello", 255);
     uint64_t end = read_pmccntr();
     printf("Printf took %d cycles\n", (uint32_t)(end - start));
+    irq_enable();
+    irq_init();
+    // To initialize System Timer not ARM Timer.
+    timer_init();
     TaskHandle_t task1;
     TaskHandle_t task2;
     
@@ -77,18 +83,17 @@ void kernel_main()
     printf("Semaphore created successfully\n");
  }
     xSemaphoreGive( xSemaphore );
-    BaseType_t ret = xTaskCreate( Task1, "Task1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &task1 );
-    if(ret != pdPASS) {
-        printf("Task creation failed\n");
-    }
-    BaseType_t ret2 = xTaskCreate( Task2, "Task2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &task2 );
-    if(ret2 != pdPASS) {
-        printf("Task2 creation failed\n");
-    }
-    else {
-        printf("Task2 created successfully\n");
-    }
-
+    // BaseType_t ret = xTaskCreate( Task1, "Task1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &task1 );
+    // if(ret != pdPASS) {
+    //     printf("Task creation failed\n");
+    // }
+    // BaseType_t ret2 = xTaskCreate( Task2, "Task2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &task2 );
+    // if(ret2 != pdPASS) {
+    //     printf("Task2 creation failed\n");
+    // }
+    // else {
+    //     printf("Task2 created successfully\n");
+    // }
     interrupt_stats();
     print_cntv_reg();
     // Kernel main function

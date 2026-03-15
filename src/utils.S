@@ -20,3 +20,8 @@ memzero:
     subs x1, x1, #8
     b.gt memzero
     ret
+
+.globl irq_enable
+irq_enable:
+    msr daifclr, #2
+    ret
